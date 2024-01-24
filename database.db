@@ -1,0 +1,12 @@
+
+type Person struct {
+	ID          int
+	FirstName   string
+	LastName    string
+	Age         int
+	Gender      string
+	NationalID  string
+	Description string
+	Mobile      string
+	IsActive    bool
+}
