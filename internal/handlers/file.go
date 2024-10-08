@@ -1,22 +1,12 @@
 package handlers
 
 import (
+	"Former/internal/config"
 	"fmt"
 	"net/http"
 
-	"former/internal/config"
-	"former/internal/services"
+	"github.com/benmanns/goworker"
 )
-
-func getStorage(storageType string, cfg *config.Config) (services.Storage, error) {
-	switch storageType {
-	case "s3":
-		return services.NewS3Storage("your-bucket-name", "your-region"), nil
-	case "local":
-		return services.NewLocalStorage(cfg.PublicDir), nil
-	}
-	return nil, fmt.Errorf("Invalid storage type")
-}
 
 func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20)
@@ -41,6 +31,21 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Unable to upload file", http.StatusInternalServerError)
 		return
+	}
+
+	compress := r.FormValue("compress")
+	if compress == "true" {
+		err = goworker.Enqueue(&goworker.Job{
+			Queue: "compress_queue",
+			Payload: goworker.Payload{
+				Class: "Compress",
+				Args:  []interface{}{handler.Filename, handler.Filename},
+			},
+		})
+		if err != nil {
+			http.Error(w, "Failed to enqueue compression job", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	fmt.Fprintf(w, "File uploaded successfully: %s\n", handler.Filename)
